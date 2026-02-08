@@ -1,0 +1,36 @@
+[tool.poetry]
+name = "nexus-backend"
+version = "0.1.0"
+description = "N.E.X.U.S.: Network for ElevenLabs X-call User Scheduling"
+authors = []
+readme = "README.md"
+packages = [{ include = "app", from = "." }]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+fastapi = "*"
+uvicorn = { extras = ["standard"], version = "*" }
+pydantic = "*"
+pydantic-settings = "*"
+redis = "*"
+asyncpg = "*"
+sqlalchemy = { extras = ["asyncio"], version = "*" }
+websockets = "*"
+structlog = "*"
+python-multipart = "*"
+twilio = "*"
+elevenlabs = "*"
+openai = "*"
+google-api-python-client = "*"
+google-auth = "*"
+google-auth-oauthlib = "*"
+httpx = "*"
+cryptography = "*"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "*"
+pytest-asyncio = "*"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

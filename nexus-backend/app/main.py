@@ -1,0 +1,98 @@
+"""FastAPI entry point for NEXUS (RFC v1.2)."""
+
+from contextlib import asynccontextmanager
+
+import structlog
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+# ProxyHeadersMiddleware: respect X-Forwarded-Proto (https) from ngrok/reverse proxy (Starlette has no built-in)
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
+
+from app.api.auth import router as auth_router
+from app.api.routes import router
+from app.config import get_settings
+from app.core.database import close_db, init_db
+from app.core.redis import close_redis, get_redis
+
+logger = structlog.get_logger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Startup: validate config (MOCK_HUMAN), init DB and Redis, start stale campaign monitor. Shutdown: cancel monitor, close both."""
+    import asyncio
+    from app.services.orchestrator import campaign_stale_monitor_loop
+
+    settings = get_settings()
+    if settings.NEXUS_MODE == "mock_human" and not settings.get_target_phones():
+        logger.error("TARGET_PHONE_NUMBER or TARGET_PHONE_NUMBERS required when NEXUS_MODE=mock_human", event_type="startup")
+        raise ValueError("TARGET_PHONE_NUMBER or TARGET_PHONE_NUMBERS required when NEXUS_MODE=mock_human")
+    await init_db()
+    await get_redis()
+    monitor_task = asyncio.create_task(campaign_stale_monitor_loop(), name="campaign_stale_monitor")
+    yield
+    monitor_task.cancel()
+    try:
+        await monitor_task
+    except asyncio.CancelledError:
+        pass
+    await close_redis()
+    await close_db()
+
+
+def create_app() -> FastAPI:
+    """Application factory."""
+    settings = get_settings()
+    app = FastAPI(
+        title="NEXUS",
+        description="Network for ElevenLabs X-call User Scheduling",
+        version="0.1.0",
+        lifespan=lifespan,
+    )
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+    # Trust X-Forwarded-Proto / X-Forwarded-For from ngrok (or other reverse proxy)
+    app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
+
+    # Force https scheme when behind ngrok so redirects/cookies use HTTPS (run innermost so it wins)
+    class ForceHttpsMiddleware(BaseHTTPMiddleware):
+        async def dispatch(self, request: Request, call_next):
+            request.scope["scheme"] = "https"
+            return await call_next(request)
+
+    app.add_middleware(ForceHttpsMiddleware)
+
+    app.include_router(auth_router)
+    app.include_router(router)
+
+    @app.get("/health")
+    async def health():
+        """Liveness: app is running."""
+        return {"status": "ok", "mode": settings.NEXUS_MODE}
+
+    @app.get("/ready")
+    async def ready():
+        """Readiness: DB and Redis are reachable (for k8s/Docker)."""
+        try:
+            await get_redis().ping()
+            from sqlalchemy import text
+            from app.core.database import get_session_factory
+            async with get_session_factory()() as session:
+                await session.execute(text("SELECT 1"))
+            return {"status": "ready", "db": "ok", "redis": "ok"}
+        except Exception as e:
+            logger.warning("ready_check_failed", error=str(e), event_type="startup")
+            from fastapi.responses import JSONResponse
+            return JSONResponse(status_code=503, content={"status": "not ready", "error": str(e)})
+
+    return app
+
+
+app = create_app()

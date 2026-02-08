@@ -1,0 +1,84 @@
+# NEXUS — API + PostgreSQL + Redis.
+# • Default: docker compose up — use http://localhost:8000 (OAuth, docs, API).
+# • ElevenLabs webhooks: docker compose --profile expose up — ngrok exposes the API so the AI can call
+#   /api/check-availability and /api/book-slot. Set NGROK_AUTHTOKEN in .env. Then: docker logs nexus-ngrok
+#   and use that HTTPS URL in ElevenLabs agent Tools.
+
+services:
+  api:
+    build:
+      context: ./nexus-backend
+      dockerfile: Dockerfile
+    container_name: nexus-api
+    # --http h11: avoid 400 "invalid header name" when ElevenLabs/ngrok send headers httptools rejects
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--http", "h11"]
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./nexus-backend/app:/app/app
+    env_file:
+      - ./.env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+
+  db:
+    image: postgres:15-alpine
+    container_name: nexus-db
+    environment:
+      POSTGRES_USER: nexus
+      POSTGRES_PASSWORD: nexus
+      POSTGRES_DB: nexus
+    volumes:
+      - nexus_db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nexus -d nexus"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: nexus-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - nexus_redis_data:/data
+
+  # ElevenLabs only: public tunnel so the agent can POST to /api/check-availability and /api/book-slot.
+  # Option A: ngrok. Requires NGROK_AUTHTOKEN in .env.
+  # Option B: cloudflared (no token). Use if ngrok returns 400 "invalid header name".
+  # Start with: docker compose --profile expose up. Then: docker compose logs ngrok  OR  docker compose logs cloudflared
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: nexus-ngrok
+    command: ["http", "nexus-api:8000", "--log=stdout"]
+    env_file:
+      - ./.env
+    environment:
+      - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
+    depends_on:
+      - api
+    restart: "no"
+    profiles:
+      - expose
+
+  # Alternative tunnel (no auth token). Use this URL in ElevenLabs if ngrok gives 400 invalid header name.
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: nexus-cloudflared
+    command: ["tunnel", "--no-autoupdate", "--url", "http://nexus-api:8000"]
+    depends_on:
+      - api
+    restart: "no"
+    profiles:
+      - expose
+
+volumes:
+  nexus_db_data:
+  nexus_redis_data:
