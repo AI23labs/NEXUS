@@ -77,6 +77,9 @@ class Settings(BaseSettings):
     # ElevenLabs outbound (Twilio)
     ELEVENLABS_AGENT_PHONE_NUMBER_ID: str | None = None  # required for outbound dial
 
+    # Frontend (SPA): origin for CORS and post-login redirect (e.g. http://localhost:5173)
+    FRONTEND_ORIGIN: str = ""
+
     # Optional (mock_human): single number or comma-separated list for testing multiple recipients
     TARGET_PHONE_NUMBER: str | None = None
     TARGET_PHONE_NUMBERS: str | None = None  # e.g. +16175551111,+16175552222

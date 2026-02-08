@@ -51,9 +51,11 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
+    # With credentials=True, browser rejects allow_origins=["*"]. Use explicit frontend origin when set.
+    cors_origins = [settings.FRONTEND_ORIGIN] if settings.FRONTEND_ORIGIN else ["http://localhost:5173", "http://localhost:3000"]
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=cors_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

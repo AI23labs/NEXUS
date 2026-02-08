@@ -46,6 +46,11 @@ htmlcov/
 *.swp
 *.swo
 
+# Node / frontend
+node_modules/
+nexus-frontend/dist/
+*.tsbuildinfo
+
 # OS
 .DS_Store
 Thumbs.db

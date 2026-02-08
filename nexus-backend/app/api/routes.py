@@ -19,7 +19,7 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
-from app.core.database import Appointment, Campaign, CallTask, get_db_session, get_session_factory
+from app.core.database import Appointment, Campaign, CallTask, User, get_db_session, get_session_factory
 from app.models import (
     BookSlotRequest,
     BookSlotResponse,
@@ -54,6 +54,7 @@ SSE_PING_INTERVAL = 30
 async def create_campaign(
     request: Request,
     body: CampaignRequest,
+    session: AsyncSession = Depends(get_db_session),
 ) -> SwarmPlan:
     """
     Create campaign in DB and spawn 15 concurrent call-agent tasks (RFC 3.2, Challenge 2.3).
@@ -62,6 +63,17 @@ async def create_campaign(
     user_id = get_current_user_id(request)
     if not user_id:
         raise HTTPException(status_code=401, detail="Authentication required")
+    # Ensure user exists (e.g. after DB reset or stale cookie)
+    try:
+        uid = UUID(user_id)
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Invalid session. Please sign in again.")
+    r = await session.execute(select(User).where(User.id == uid))
+    if r.scalar_one_or_none() is None:
+        raise HTTPException(
+            status_code=401,
+            detail="Your session is no longer valid (e.g. after a database reset). Please sign in again.",
+        )
     settings = get_settings()
     client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
     orchestrator = SwarmOrchestrator(openai_client=client)
