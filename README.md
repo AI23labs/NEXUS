@@ -8,7 +8,7 @@ Agentic Voice AI for autonomous appointment scheduling — built for the **CallP
 
 ## Table of Contents
 
-- [Motivation & Goal](#motivation--goal)
+- [Motivation &amp; Goal](#motivation--goal)
 - [Core Features (MVP)](#core-features-mvp)
 - [Architecture](#architecture)
 - [Tech Stack](#tech-stack)
@@ -20,7 +20,7 @@ Agentic Voice AI for autonomous appointment scheduling — built for the **CallP
 - [Workflow Diagrams](#workflow-diagrams)
 - [Campaign State Machine (RFC)](#campaign-state-machine-rfc)
 - [Evaluation Criteria](#evaluation-criteria)
-- [Stretch Goals & Roadmap](#stretch-goals--roadmap)
+- [Stretch Goals &amp; Roadmap](#stretch-goals--roadmap)
 - [License](#license)
 
 ---
@@ -42,12 +42,12 @@ NEXUS implements this as a production-ready system with a React dashboard, FastA
 
 ## Core Features (MVP)
 
-| Challenge requirement | Implementation |
-|----------------------|----------------|
-| **2.1 Single-call booking** | User requests appointment via dashboard; agent calls provider via ElevenLabs; books slot; calendar integration (Google Calendar) checks availability in real time. |
-| **2.2 Agentic Functions** | ElevenLabs tool calling: `check_availability`, `report_slot_offer`, `book_slot`, `end_call`, `get_distance`. Backend exposes `/api/check-availability`, `/api/book-slot`, etc.; agent asks clarifying questions and adapts. |
-| **2.3 Multi-call parallel (“Swarm”)** | Up to 15 providers called in parallel; each call is an independent voice agent; results aggregated with scoring (earliest 50%, rating 30%, distance 20%); ranked shortlist returned for confirmation. |
-| **2.4 Preference & calendar matching** | Real-time calendar checks prevent double booking; scoring uses rating, distance, and availability; user weighting configurable (RFC 3.2). |
+| Challenge requirement                         | Implementation                                                                                                                                                                                                                           |
+| --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **2.1 Single-call booking**             | User requests appointment via dashboard; agent calls provider via ElevenLabs; books slot; calendar integration (Google Calendar) checks availability in real time.                                                                       |
+| **2.2 Agentic Functions**               | ElevenLabs tool calling:`check_availability`, `report_slot_offer`, `book_slot`, `end_call`, `get_distance`. Backend exposes `/api/check-availability`, `/api/book-slot`, etc.; agent asks clarifying questions and adapts. |
+| **2.3 Multi-call parallel (“Swarm”)** | Up to 15 providers called in parallel; each call is an independent voice agent; results aggregated with scoring (earliest 50%, rating 30%, distance 20%); ranked shortlist returned for confirmation.                                    |
+| **2.4 Preference & calendar matching**  | Real-time calendar checks prevent double booking; scoring uses rating, distance, and availability; user weighting configurable (RFC 3.2).                                                                                                |
 
 ---
 
@@ -90,14 +90,14 @@ NEXUS implements this as a production-ready system with a React dashboard, FastA
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|------------|
-| **Frontend** | React 18, TypeScript, Vite, Tailwind CSS, Framer Motion, React Router v6, Lucide React |
-| **Backend** | Python 3.12, FastAPI, SQLAlchemy 2.0 (async), Pydantic, structlog |
-| **Voice & telephony** | ElevenLabs Conversational AI (agentic functions), Twilio (outbound) |
-| **AI / orchestration** | OpenAI (intent analysis, brain instructions), ElevenLabs (voice + tools) |
-| **Data** | PostgreSQL 15, Redis 7 |
-| **Deployment** | Docker Compose (api, frontend, db, redis; optional ngrok/cloudflared profile) |
+| Layer                        | Technology                                                                             |
+| ---------------------------- | -------------------------------------------------------------------------------------- |
+| **Frontend**           | React 18, TypeScript, Vite, Tailwind CSS, Framer Motion, React Router v6, Lucide React |
+| **Backend**            | Python 3.12, FastAPI, SQLAlchemy 2.0 (async), Pydantic, structlog                      |
+| **Voice & telephony**  | ElevenLabs Conversational AI (agentic functions), Twilio (outbound)                    |
+| **AI / orchestration** | OpenAI (intent analysis, brain instructions), ElevenLabs (voice + tools)               |
+| **Data**               | PostgreSQL 15, Redis 7                                                                 |
+| **Deployment**         | Docker Compose (api, frontend, db, redis; optional ngrok/cloudflared profile)          |
 
 ---
 
@@ -194,7 +194,6 @@ See `.env.example` for the full list and comments.
    git clone <repo-url>
    cd NEXUS-fork
    ```
-
 2. **Create environment file**
 
    ```bash
@@ -209,7 +208,6 @@ See `.env.example` for the full list and comments.
    - `TARGET_PHONE_NUMBER` (E.164) for mock_human
    - `FRONTEND_ORIGIN=http://localhost:5173`
    - For Google login: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI` (backend callback URL, e.g. `http://localhost:8000/api/auth/callback`)
-
 3. **Start stack with Docker**
 
    ```bash
@@ -219,7 +217,6 @@ See `.env.example` for the full list and comments.
    - API: **http://localhost:8000**
    - Frontend: **http://localhost:5173**
    - Docs: **http://localhost:8000/docs**
-
 4. **Optional: expose API for ElevenLabs webhooks**
 
    ```bash
@@ -227,7 +224,6 @@ See `.env.example` for the full list and comments.
    ```
 
    Then inspect logs for ngrok/cloudflared URL and configure your ElevenLabs agent’s tool base URL to that HTTPS endpoint.
-
 5. **Run frontend only (no Docker)**
 
    Backend must be running (e.g. Docker). From repo root:
@@ -239,7 +235,6 @@ See `.env.example` for the full list and comments.
    ```
 
    Use `VITE_API_URL=http://localhost:8000` if the app is not proxying to the API.
-
 6. **Run backend only (no Docker)**
 
    Set `DATABASE_URL` and `REDIS_URL` to your local Postgres and Redis. Then:
@@ -265,24 +260,24 @@ See `.env.example` for the full list and comments.
 
 ## API Overview
 
-| Method | Path | Purpose |
-|--------|------|--------|
-| GET | `/health` | Liveness |
-| GET | `/ready` | Readiness (DB + Redis) |
-| GET | `/api/auth/login` | Redirect to Google OAuth |
-| GET | `/api/auth/callback` | OAuth callback; upsert user; set session cookie |
-| POST | `/api/campaigns` | Create campaign; spawn swarm (auth required) |
-| GET | `/api/campaigns/{id}` | Campaign detail |
-| GET | `/api/campaigns/{id}/stream` | SSE stream for live updates |
-| GET | `/api/campaigns/{id}/results` | Ranked offers |
-| POST | `/api/campaigns/{id}/confirm` | Confirm slot |
-| POST | `/api/campaigns/{id}/cancel` | Cancel campaign |
-| GET | `/api/appointments` | List appointments (auth required) |
-| POST | `/api/check-availability` | Tool: check calendar and hold slot (ElevenLabs) |
-| POST | `/api/book-slot` | Tool: confirm and book (ElevenLabs) |
-| POST | `/api/report-slot-offer` | Tool: report offered slot (ElevenLabs) |
-| POST | `/api/end-call` | Tool: end call (ElevenLabs) |
-| POST | `/api/get-distance` | Tool: distance (ElevenLabs) |
+| Method | Path                            | Purpose                                         |
+| ------ | ------------------------------- | ----------------------------------------------- |
+| GET    | `/health`                     | Liveness                                        |
+| GET    | `/ready`                      | Readiness (DB + Redis)                          |
+| GET    | `/api/auth/login`             | Redirect to Google OAuth                        |
+| GET    | `/api/auth/callback`          | OAuth callback; upsert user; set session cookie |
+| POST   | `/api/campaigns`              | Create campaign; spawn swarm (auth required)    |
+| GET    | `/api/campaigns/{id}`         | Campaign detail                                 |
+| GET    | `/api/campaigns/{id}/stream`  | SSE stream for live updates                     |
+| GET    | `/api/campaigns/{id}/results` | Ranked offers                                   |
+| POST   | `/api/campaigns/{id}/confirm` | Confirm slot                                    |
+| POST   | `/api/campaigns/{id}/cancel`  | Cancel campaign                                 |
+| GET    | `/api/appointments`           | List appointments (auth required)               |
+| POST   | `/api/check-availability`     | Tool: check calendar and hold slot (ElevenLabs) |
+| POST   | `/api/book-slot`              | Tool: confirm and book (ElevenLabs)             |
+| POST   | `/api/report-slot-offer`      | Tool: report offered slot (ElevenLabs)          |
+| POST   | `/api/end-call`               | Tool: end call (ElevenLabs)                     |
+| POST   | `/api/get-distance`           | Tool: distance (ElevenLabs)                     |
 
 All credentials and keys are read from the environment; nothing is hardcoded in the API.
 
@@ -419,13 +414,13 @@ Match quality (Challenge 2.3): **Earliest 50%**, **Rating 30%**, **Proximity 20%
 
 ## Evaluation Criteria
 
-| Criterion | How NEXUS addresses it |
-|-----------|--------------------------|
-| **Conversational quality** | ElevenLabs Conversational AI; low-latency tool responses; backend timeouts (e.g. 10s) to keep agent responsive. |
-| **Agentic functions** | Full tool orchestration: check_availability, report_slot_offer, book_slot, end_call, get_distance; agent instructions enforce order and calendar/booking consistency. |
-| **Optimal match quality** | Weighted scoring (time, rating, distance); ranked shortlist; user confirms one slot; calendar prevents double booking. |
-| **Parallelization** | Up to 15 concurrent call tasks per campaign; each task independent; failures don’t block others; stale campaign monitor for cleanup. |
-| **User experience** | Single flow: describe request → initiate swarm → watch live status → see ranked offers → confirm → view appointments; Google sign-in; audit trail and settings. |
+| Criterion                        | How NEXUS addresses it                                                                                                                                                |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Conversational quality** | ElevenLabs Conversational AI; low-latency tool responses; backend timeouts (e.g. 10s) to keep agent responsive.                                                       |
+| **Agentic functions**      | Full tool orchestration: check_availability, report_slot_offer, book_slot, end_call, get_distance; agent instructions enforce order and calendar/booking consistency. |
+| **Optimal match quality**  | Weighted scoring (time, rating, distance); ranked shortlist; user confirms one slot; calendar prevents double booking.                                                |
+| **Parallelization**        | Up to 15 concurrent call tasks per campaign; each task independent; failures don’t block others; stale campaign monitor for cleanup.                                 |
+| **User experience**        | Single flow: describe request → initiate swarm → watch live status → see ranked offers → confirm → view appointments; Google sign-in; audit trail and settings.  |
 
 ---
 
