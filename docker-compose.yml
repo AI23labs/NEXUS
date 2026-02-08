@@ -1,5 +1,6 @@
-# NEXUS — API + PostgreSQL + Redis.
-# • Default: docker compose up — use http://localhost:8000 (OAuth, docs, API).
+# NEXUS — API + Frontend + PostgreSQL + Redis.
+# • Default: docker compose up — API at http://localhost:8000, frontend at http://localhost:5173.
+# • Set FRONTEND_ORIGIN=http://localhost:5173 in .env so Google login redirects to the app.
 # • ElevenLabs webhooks: docker compose --profile expose up — ngrok exposes the API so the AI can call
 #   /api/check-availability and /api/book-slot. Set NGROK_AUTHTOKEN in .env. Then: docker logs nexus-ngrok
 #   and use that HTTPS URL in ElevenLabs agent Tools.
@@ -23,6 +24,25 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./nexus-frontend
+      dockerfile: Dockerfile
+    container_name: nexus-frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./nexus-frontend:/app
+      # Isolate node_modules so container installs Linux binaries (host is macOS)
+      - /app/node_modules
+    env_file:
+      - ./.env
+    environment:
+      - VITE_PROXY_TARGET=http://api:8000
+    depends_on:
+      - api
     restart: unless-stopped
 
   db:

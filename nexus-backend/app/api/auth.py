@@ -202,7 +202,8 @@ async def auth_callback(
     user_id_str = str(user_id_raw)
 
     cookie_value = _sign_session(user_id_str, settings.SESSION_SECRET_KEY)
-    response = Response(status_code=302, headers={"Location": "/docs"})
+    redirect_url = (settings.FRONTEND_ORIGIN or "").strip() or "/docs"
+    response = Response(status_code=302, headers={"Location": redirect_url})
     response.set_cookie(
         key=SESSION_COOKIE_NAME,
         value=cookie_value,
